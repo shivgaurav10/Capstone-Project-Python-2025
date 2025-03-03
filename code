@@ -1,0 +1,50 @@
+class Patient:
+    def __init__(self, name, age, reason_for_visit):
+        self.name = name
+        self.age = age
+        self.reason_for_visit = reason_for_visit
+
+    def __str__(self):
+        return f"Patient: {self.name}, Age: {self.age}, Reason for visit: {self.reason_for_visit}"
+
+class Doctor:
+    def __init__(self, name):
+        self.name = name
+        self.schedule = []
+
+    def schedule_patient(self, patient):
+        if len(self.schedule) < 16:
+            self.schedule.append(patient)
+            print(f"Patient {patient.name} has been scheduled with Dr. {self.name}.")
+        else:
+            print(f"Dr. {self.name} has reached the maximum number of patients for today.")
+
+    def view_schedule(self):
+        if not self.schedule:
+            print(f"Dr. {self.name} has no patients scheduled today.")
+        else:
+            print(f"Schedule for Dr. {self.name}:")
+            for i, patient in enumerate(self.schedule, start=1):
+                print(f"  {i}. {patient}")
+
+    def available_slots(self):
+        return 16 - len(self.schedule)
+
+# Example usage:
+doctor = Doctor("Smith")
+
+# Creating and scheduling patients
+patient1 = Patient("Alice", 30, "Routine checkup")
+patient2 = Patient("Bob", 45, "Flu symptoms")
+patient3 = Patient("Charlie", 60, "Blood pressure check")
+# ... You can add more patients
+
+doctor.schedule_patient(patient1)
+doctor.schedule_patient(patient2)
+doctor.schedule_patient(patient3)
+
+# View the doctor's schedule
+doctor.view_schedule()
+
+# Check remaining available slots for patients
+print(f"Available slots for new patients: {doctor.available_slots()}")
