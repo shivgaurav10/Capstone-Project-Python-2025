@@ -97,7 +97,7 @@ class SchedulerApp:
 
 # Main function to run the app
 def main():
-    doctor = Doctor("Smith")  # Create a doctor object
+    doctor = Doctor("Kandpal")  # Create a doctor object
     root = tk.Tk()
     app = SchedulerApp(root, doctor)
     root.mainloop()
