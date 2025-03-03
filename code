@@ -1,3 +1,7 @@
+import tkinter as tk
+from tkinter import messagebox
+
+# Patient class
 class Patient:
     def __init__(self, name, age, reason_for_visit):
         self.name = name
@@ -5,8 +9,9 @@ class Patient:
         self.reason_for_visit = reason_for_visit
 
     def __str__(self):
-        return f"Patient: {self.name}, Age: {self.age}, Reason for visit: {self.reason_for_visit}"
+        return f"{self.name}, Age: {self.age}, Reason: {self.reason_for_visit}"
 
+# Doctor class
 class Doctor:
     def __init__(self, name):
         self.name = name
@@ -15,36 +20,87 @@ class Doctor:
     def schedule_patient(self, patient):
         if len(self.schedule) < 16:
             self.schedule.append(patient)
-            print(f"Patient {patient.name} has been scheduled with Dr. {self.name}.")
+            return True
         else:
-            print(f"Dr. {self.name} has reached the maximum number of patients for today.")
+            return False
 
-    def view_schedule(self):
-        if not self.schedule:
-            print(f"Dr. {self.name} has no patients scheduled today.")
+    def get_schedule(self):
+        return [str(patient) for patient in self.schedule]
+
+# GUI application class
+class SchedulerApp:
+    def __init__(self, root, doctor):
+        self.root = root
+        self.doctor = doctor
+        self.root.title(f"Scheduling for Dr. {self.doctor.name}")
+        self.root.geometry("500x400")
+
+        # GUI components
+        self.name_label = tk.Label(root, text="Patient's Name:")
+        self.name_label.pack(pady=5)
+
+        self.name_entry = tk.Entry(root)
+        self.name_entry.pack(pady=5)
+
+        self.age_label = tk.Label(root, text="Patient's Age:")
+        self.age_label.pack(pady=5)
+
+        self.age_entry = tk.Entry(root)
+        self.age_entry.pack(pady=5)
+
+        self.reason_label = tk.Label(root, text="Reason for Visit:")
+        self.reason_label.pack(pady=5)
+
+        self.reason_entry = tk.Entry(root)
+        self.reason_entry.pack(pady=5)
+
+        self.schedule_button = tk.Button(root, text="Schedule Patient", command=self.schedule_patient)
+        self.schedule_button.pack(pady=10)
+
+        self.schedule_listbox = tk.Listbox(root, width=50, height=10)
+        self.schedule_listbox.pack(pady=10)
+
+        self.update_schedule()
+
+    def schedule_patient(self):
+        name = self.name_entry.get()
+        age = self.age_entry.get()
+        reason = self.reason_entry.get()
+
+        if not name or not age or not reason:
+            messagebox.showwarning("Input Error", "All fields must be filled out!")
+            return
+
+        if not age.isdigit():
+            messagebox.showwarning("Input Error", "Age must be a number!")
+            return
+
+        patient = Patient(name, int(age), reason)
+
+        if self.doctor.schedule_patient(patient):
+            messagebox.showinfo("Success", f"Patient {name} has been scheduled.")
+            self.update_schedule()
         else:
-            print(f"Schedule for Dr. {self.name}:")
-            for i, patient in enumerate(self.schedule, start=1):
-                print(f"  {i}. {patient}")
+            messagebox.showwarning("Schedule Full", "Doctor's schedule is full for today!")
 
-    def available_slots(self):
-        return 16 - len(self.schedule)
+        # Clear the input fields
+        self.name_entry.delete(0, tk.END)
+        self.age_entry.delete(0, tk.END)
+        self.reason_entry.delete(0, tk.END)
 
-# Example usage:
-doctor = Doctor("Smith")
+    def update_schedule(self):
+        # Update the listbox with the doctor's current schedule
+        self.schedule_listbox.delete(0, tk.END)
+        schedule = self.doctor.get_schedule()
+        for patient in schedule:
+            self.schedule_listbox.insert(tk.END, patient)
 
-# Creating and scheduling patients
-patient1 = Patient("Alice", 30, "Routine checkup")
-patient2 = Patient("Bob", 45, "Flu symptoms")
-patient3 = Patient("Charlie", 60, "Blood pressure check")
-# ... You can add more patients
+# Main function to run the app
+def main():
+    doctor = Doctor("Smith")  # Create a doctor object
+    root = tk.Tk()
+    app = SchedulerApp(root, doctor)
+    root.mainloop()
 
-doctor.schedule_patient(patient1)
-doctor.schedule_patient(patient2)
-doctor.schedule_patient(patient3)
-
-# View the doctor's schedule
-doctor.view_schedule()
-
-# Check remaining available slots for patients
-print(f"Available slots for new patients: {doctor.available_slots()}")
+if __name__ == "__main__":
+    main()
