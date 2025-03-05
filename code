@@ -1,105 +1,290 @@
 import tkinter as tk
 from tkinter import messagebox
+import sqlite3
+from datetime import datetime, timedelta
+
+# SQLite Database setup
+def create_connection():
+    conn = sqlite3.connect('hospital_management.db')
+    return conn
+
+def create_tables():
+    conn = create_connection()
+    cursor = conn.cursor()
+
+    # Create Patients table
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Patients (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        age INTEGER NOT NULL,
+                        medical_condition TEXT
+                      )''')
+
+    # Create Doctors table
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Doctors (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL
+                      )''')
+
+    # Create Appointments table
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Appointments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        patient_id INTEGER,
+                        doctor_id INTEGER,
+                        appointment_time TEXT,
+                        FOREIGN KEY (patient_id) REFERENCES Patients(id),
+                        FOREIGN KEY (doctor_id) REFERENCES Doctors(id)
+                      )''')
+    conn.commit()
+    conn.close()
 
 # Patient class
 class Patient:
-    def __init__(self, name, age, reason_for_visit):
+    def __init__(self, name, age, medical_condition=None):
         self.name = name
         self.age = age
-        self.reason_for_visit = reason_for_visit
+        self.medical_condition = medical_condition
 
-    def __str__(self):
-        return f"{self.name}, Age: {self.age}, Reason: {self.reason_for_visit}"
+    def save(self):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO Patients (name, age, medical_condition) VALUES (?, ?, ?)''',
+                       (self.name, self.age, self.medical_condition))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_patient_by_id(patient_id):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Patients WHERE id = ?', (patient_id,))
+        patient = cursor.fetchone()
+        conn.close()
+        return patient
+
+    @staticmethod
+    def get_all_patients():
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Patients')
+        patients = cursor.fetchall()
+        conn.close()
+        return patients
 
 # Doctor class
 class Doctor:
     def __init__(self, name):
         self.name = name
-        self.schedule = []
 
-    def schedule_patient(self, patient):
-        if len(self.schedule) < 16:
-            self.schedule.append(patient)
-            return True
-        else:
-            return False
+    def save(self):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO Doctors (name) VALUES (?)''', (self.name,))
+        conn.commit()
+        conn.close()
 
-    def get_schedule(self):
-        return [str(patient) for patient in self.schedule]
+    @staticmethod
+    def get_all_doctors():
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Doctors')
+        doctors = cursor.fetchall()
+        conn.close()
+        return doctors
 
-# GUI application class
-class SchedulerApp:
-    def __init__(self, root, doctor):
+    @staticmethod
+    def get_doctor_by_id(doctor_id):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Doctors WHERE id = ?', (doctor_id,))
+        doctor = cursor.fetchone()
+        conn.close()
+        return doctor
+
+# Appointment class
+class Appointment:
+    def __init__(self, patient_id, doctor_id, appointment_time):
+        self.patient_id = patient_id
+        self.doctor_id = doctor_id
+        self.appointment_time = appointment_time
+
+    def save(self):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO Appointments (patient_id, doctor_id, appointment_time) 
+                          VALUES (?, ?, ?)''', (self.patient_id, self.doctor_id, self.appointment_time))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_appointments_by_doctor(doctor_id):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Appointments WHERE doctor_id = ?', (doctor_id,))
+        appointments = cursor.fetchall()
+        conn.close()
+        return appointments
+
+    @staticmethod
+    def get_appointments_by_time(doctor_id, appointment_time):
+        conn = create_connection()
+        cursor = conn.cursor()
+        cursor.execute('''SELECT * FROM Appointments WHERE doctor_id = ? AND appointment_time = ?''',
+                       (doctor_id, appointment_time))
+        appointments = cursor.fetchall()
+        conn.close()
+        return appointments
+
+# Tkinter GUI Application
+class HospitalApp:
+    def __init__(self, root):
         self.root = root
-        self.doctor = doctor
-        self.root.title(f"Scheduling for Dr. {self.doctor.name}")
-        self.root.geometry("500x400")
+        self.root.title("Hospital Patient Management System")
+        self.root.geometry("600x500")
 
-        # GUI components
-        self.name_label = tk.Label(root, text="Patient's Name:")
-        self.name_label.pack(pady=5)
+        create_tables()  # Ensure tables are created before using the system
 
-        self.name_entry = tk.Entry(root)
-        self.name_entry.pack(pady=5)
+        self.selected_patient = None
+        self.selected_doctor = None
 
-        self.age_label = tk.Label(root, text="Patient's Age:")
-        self.age_label.pack(pady=5)
+        # GUI Components for Patient
+        self.patient_name_label = tk.Label(root, text="Patient's Name:")
+        self.patient_name_label.pack(pady=5)
+        self.patient_name_entry = tk.Entry(root)
+        self.patient_name_entry.pack(pady=5)
 
-        self.age_entry = tk.Entry(root)
-        self.age_entry.pack(pady=5)
+        self.patient_age_label = tk.Label(root, text="Patient's Age:")
+        self.patient_age_label.pack(pady=5)
+        self.patient_age_entry = tk.Entry(root)
+        self.patient_age_entry.pack(pady=5)
 
-        self.reason_label = tk.Label(root, text="Reason for Visit:")
-        self.reason_label.pack(pady=5)
+        self.patient_condition_label = tk.Label(root, text="Medical Condition (optional):")
+        self.patient_condition_label.pack(pady=5)
+        self.patient_condition_entry = tk.Entry(root)
+        self.patient_condition_entry.pack(pady=5)
 
-        self.reason_entry = tk.Entry(root)
-        self.reason_entry.pack(pady=5)
+        self.add_patient_button = tk.Button(root, text="Add Patient", command=self.add_patient)
+        self.add_patient_button.pack(pady=10)
 
-        self.schedule_button = tk.Button(root, text="Schedule Patient", command=self.schedule_patient)
-        self.schedule_button.pack(pady=10)
+        # GUI Components for Doctor
+        self.doctor_name_label = tk.Label(root, text="Doctor's Name:")
+        self.doctor_name_label.pack(pady=5)
+        self.doctor_name_entry = tk.Entry(root)
+        self.doctor_name_entry.pack(pady=5)
 
-        self.schedule_listbox = tk.Listbox(root, width=50, height=10)
-        self.schedule_listbox.pack(pady=10)
+        self.add_doctor_button = tk.Button(root, text="Add Doctor", command=self.add_doctor)
+        self.add_doctor_button.pack(pady=10)
 
-        self.update_schedule()
+        # GUI Components for Appointment Scheduling
+        self.appointment_patient_label = tk.Label(root, text="Select Patient ID for Appointment:")
+        self.appointment_patient_label.pack(pady=5)
 
-    def schedule_patient(self):
-        name = self.name_entry.get()
-        age = self.age_entry.get()
-        reason = self.reason_entry.get()
+        self.appointment_patient_entry = tk.Entry(root)
+        self.appointment_patient_entry.pack(pady=5)
 
-        if not name or not age or not reason:
-            messagebox.showwarning("Input Error", "All fields must be filled out!")
+        self.appointment_doctor_label = tk.Label(root, text="Select Doctor ID for Appointment:")
+        self.appointment_doctor_label.pack(pady=5)
+
+        self.appointment_doctor_entry = tk.Entry(root)
+        self.appointment_doctor_entry.pack(pady=5)
+
+        self.appointment_time_label = tk.Label(root, text="Select Appointment Time:")
+        self.appointment_time_label.pack(pady=5)
+
+        self.appointment_time_combobox = tk.StringVar()
+        self.available_times = self.get_available_times()
+        self.appointment_time_combobox.set(self.available_times[0])  # Default value
+        self.appointment_time_menu = tk.OptionMenu(root, self.appointment_time_combobox, *self.available_times)
+        self.appointment_time_menu.pack(pady=5)
+
+        self.schedule_appointment_button = tk.Button(root, text="Schedule Appointment", command=self.schedule_appointment)
+        self.schedule_appointment_button.pack(pady=10)
+
+        self.view_patients_button = tk.Button(root, text="View Patients", command=self.view_patients)
+        self.view_patients_button.pack(pady=10)
+
+        self.view_appointments_button = tk.Button(root, text="View Appointments", command=self.view_appointments)
+        self.view_appointments_button.pack(pady=10)
+
+    def add_patient(self):
+        name = self.patient_name_entry.get()
+        age = self.patient_age_entry.get()
+        condition = self.patient_condition_entry.get()
+
+        if not name or not age:
+            messagebox.showwarning("Input Error", "Please fill out all required fields.")
             return
 
-        if not age.isdigit():
-            messagebox.showwarning("Input Error", "Age must be a number!")
+        # Create and save patient
+        patient = Patient(name, int(age), condition)
+        patient.save()
+
+        messagebox.showinfo("Success", f"Patient {name} added successfully.")
+
+    def add_doctor(self):
+        doctor_name = self.doctor_name_entry.get()
+
+        if not doctor_name:
+            messagebox.showwarning("Input Error", "Please enter a doctor's name.")
             return
 
-        patient = Patient(name, int(age), reason)
+        doctor = Doctor(doctor_name)
+        doctor.save()
 
-        if self.doctor.schedule_patient(patient):
-            messagebox.showinfo("Success", f"Patient {name} has been scheduled.")
-            self.update_schedule()
-        else:
-            messagebox.showwarning("Schedule Full", "Doctor's schedule is full for today!")
+        messagebox.showinfo("Success", f"Doctor {doctor_name} added successfully.")
 
-        # Clear the input fields
-        self.name_entry.delete(0, tk.END)
-        self.age_entry.delete(0, tk.END)
-        self.reason_entry.delete(0, tk.END)
+    def schedule_appointment(self):
+        patient_id = self.appointment_patient_entry.get()
+        doctor_id = self.appointment_doctor_entry.get()
+        appointment_time = self.appointment_time_combobox.get()
 
-    def update_schedule(self):
-        # Update the listbox with the doctor's current schedule
-        self.schedule_listbox.delete(0, tk.END)
-        schedule = self.doctor.get_schedule()
-        for patient in schedule:
-            self.schedule_listbox.insert(tk.END, patient)
+        if not patient_id or not doctor_id or not appointment_time:
+            messagebox.showwarning("Input Error", "Please fill out all fields.")
+            return
 
-# Main function to run the app
+        # Check if the doctor already has 2 appointments at this time slot
+        appointments_at_time = Appointment.get_appointments_by_time(int(doctor_id), appointment_time)
+        if len(appointments_at_time) >= 1:
+            messagebox.showwarning("Schedule Full", f"Doctor is already booked for {appointment_time}.")
+            return
+
+        # Check if the doctor already has 16 appointments for the day
+        appointments_for_day = Appointment.get_appointments_by_doctor(int(doctor_id))
+        if len(appointments_for_day) >= 16:
+            messagebox.showwarning("Schedule Full", f"Doctor has reached the maximum of 16 appointments for the day.")
+            return
+
+        # Create and save appointment
+        appointment = Appointment(int(patient_id), int(doctor_id), appointment_time)
+        appointment.save()
+
+        messagebox.showinfo("Success", "Appointment scheduled successfully.")
+
+    def view_patients(self):
+        patients = Patient.get_all_patients()
+        patient_info = "\n".join([f"ID: {patient[0]}, Name: {patient[1]}, Age: {patient[2]}" for patient in patients])
+
+        # Display patient details
+        messagebox.showinfo("Patients", patient_info)
+
+    def view_appointments(self):
+        doctor_id = 1  # Just showing appointments for doctor with ID=1 for example
+        appointments = Appointment.get_appointments_by_doctor(doctor_id)
+        appointment_info = "\n".join([f"Patient ID: {app[1]}, Time: {app[3]}" for app in appointments])
+
+        messagebox.showinfo("Appointments", appointment_info)
+
+    def get_available_times(self):
+        # Create time slots from 10 AM to 6 PM, 30 minutes apart
+        start_time = datetime.strptime("10:00", "%H:%M")
+        time_slots = []
+        for i in range(16):  # 16 slots for 8 hours, 30 minutes each
+            time_slots.append((start_time + timedelta(minutes=30 * i)).strftime("%H:%M"))
+        return time_slots
+
 def main():
-    doctor = Doctor("Kandpal")  # Create a doctor object
     root = tk.Tk()
-    app = SchedulerApp(root, doctor)
+    app = HospitalApp(root)
     root.mainloop()
 
 if __name__ == "__main__":
